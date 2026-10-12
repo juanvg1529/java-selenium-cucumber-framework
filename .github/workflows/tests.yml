@@ -1,0 +1,83 @@
+name: UI & API Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 11 * * 1-5" # weekdays 06:00 Colombia time
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: "Cucumber tag expression (e.g. @smoke, @ui and not @negative). Empty = all"
+        required: false
+        default: ""
+      browser:
+        description: "chrome, firefox or edge"
+        required: false
+        default: "chrome"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run Cucumber suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Run tests
+        env:
+          TAGS: ${{ inputs.tags }}
+          BROWSER: ${{ inputs.browser || 'chrome' }}
+        run: |
+          ARGS="-B -Dbrowser=$BROWSER -Dheadless=true"
+          if [ -n "$TAGS" ]; then ARGS="$ARGS -Dcucumber.filter.tags=\"$TAGS\""; fi
+          eval mvn $ARGS test
+
+      - name: Upload Cucumber report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cucumber-report
+          path: target/cucumber-report/
+          retention-days: 14
+
+  report:
+    name: Publish report
+    needs: test
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: cucumber-report
+          path: cucumber-report
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: cucumber-report
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
