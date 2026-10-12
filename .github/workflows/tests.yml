@@ -68,10 +68,21 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: cucumber-report
           path: cucumber-report
+
+      - name: Make the report mobile-friendly
+        run: |
+          python3 - <<'PY'
+          css = open('.github/report-mobile.css').read()
+          path = 'cucumber-report/index.html'
+          html = open(path, encoding='utf-8').read()
+          open(path, 'w', encoding='utf-8').write(html.replace('</head>', f'<style id="mobile-fix">{css}</style></head>', 1))
+          PY
 
       - uses: actions/configure-pages@v5
 

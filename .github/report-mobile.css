@@ -1,0 +1,8 @@
+/* Injected into the generated Cucumber HTML report: on narrow screens its header and search box
+   overflow horizontally (fixed min-widths), so let flex rows wrap and fields shrink. */
+@media (max-width: 640px) {
+  body div { flex-wrap: wrap; min-width: 0; max-width: 100%; box-sizing: border-box; }
+  body form { max-width: 100%; }
+  body input { min-width: 0 !important; width: 100% !important; max-width: 100%; box-sizing: border-box; }
+  body pre, body code { white-space: pre-wrap; overflow-wrap: anywhere; }
+}
